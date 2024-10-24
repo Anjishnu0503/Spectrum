@@ -1,0 +1,78 @@
+import nltk
+import string
+import random
+import warnings
+import re
+import spacy
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+warnings.filterwarnings('ignore')
+
+with open("C:\\Users\\anjis\\Downloads\\Spectrum.txt", 'r', errors='ignore') as f:  #edit the path as per your PC or Laptop.
+    raw = f.read().lower()
+
+nlp = spacy.load("en_core_web_sm")
+sent_tokens = nltk.sent_tokenize(raw)
+
+def LemNormalize(text):
+    doc = nlp(text.lower())
+    return [token.lemma_ for token in doc if token.text not in string.punctuation]
+
+GREETINGS_INPUTS = ["hello", "hi", "hi there", "good morning", "hey", "greetings"]
+GREETINGS_RESPONSES = ["Nice to meet you!", "How can I help you today?", "Glad to see you!", "What brings you here?", "Hope you're having a great day!"]
+
+def greeting(sentence):
+    sentence = clean_input(sentence)
+    for greeting_input in GREETINGS_INPUTS:
+        if greeting_input == sentence:
+            return random.choice(GREETINGS_RESPONSES)
+    return None
+
+def response(user_response):
+    chatbot_response = ' '
+    sent_tokens.append(user_response)
+    
+    TfidfVec = TfidfVectorizer(tokenizer=LemNormalize, stop_words="english")
+    tfidf = TfidfVec.fit_transform(sent_tokens)
+
+    vals = cosine_similarity(tfidf[-1], tfidf[:-1])  
+
+    
+    threshold = 0.1
+    responses = []
+    for i, score in enumerate(vals.flatten()):
+        if score > threshold:
+            responses.append(sent_tokens[i])
+
+    if not responses:
+        chatbot_response += "I am sorry! I don't understand your input."
+    else:
+        chatbot_response += ' '.join(responses)
+
+    sent_tokens.pop()  
+    return chatbot_response
+
+
+def clean_input(text):
+    return re.sub(r'[^\w\s]', '', text).strip().lower()
+
+if __name__ == "__main__":
+    flag = True
+    print("Hello, my name is Spectrum. I will help you with all your queries.")
+    while flag:
+        user_response = input("You: ")
+        if user_response.lower() != 'bye':
+            if user_response.lower() in ['thanks', 'thank you']:
+                flag = False
+                print("Spectrum: You're welcome!")
+            else:
+                greet_response = greeting(user_response)
+                if greet_response is not None:
+                    print("Spectrum: " + greet_response)
+                else:
+                    print("Spectrum: ", end='')
+                    print(response(user_response))
+        else:
+            flag = False
+            print("Spectrum: Bye! Have a great time!")
